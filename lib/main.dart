@@ -1,64 +1,63 @@
 import 'package:flutter/material.dart';
+import 'package:barcode_scan/barcode_scan.dart';
+import 'package:flutter/services.dart';
 
-void main() => runApp(MyApp());
+void main() => runApp(MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: HomePage(),
+));
 
-class MyApp extends StatelessWidget {
-  // This widget is the root of your application.
+class HomePage extends StatefulWidget{
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: MyHomePage(title: 'Home'),
-    );
-  }
+  _HomePageState createState() => _HomePageState();
 }
 
-class MyHomePage extends StatefulWidget {
-  MyHomePage({Key key, this.title}) : super(key: key);
-
-  final String title;
-
-  @override
-  _MyHomePageState createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      _counter++;
-    });
+class _HomePageState extends State<HomePage> {
+  String resultado = "Token: ";
+  Future _scanQr() async{
+    try {
+      String qrLeitura = await BarcodeScanner.scan();
+      setState(() {
+        resultado = qrLeitura;
+      });
+    } on PlatformException catch (e) {
+      if (e.code == BarcodeScanner.CameraAccessDenied) {
+        resultado = "Sem permissão a camera";
+      } else {
+        setState(() {
+          resultado = "Error: $e";
+        });
+      }
+    } on FormatException {
+      setState(() {
+        resultado = "Retorne para tela inicial para refazer a leitura";
+      });
+    } catch (e) {
+      setState(() {
+          resultado = "Error: $e";
+        });
+    }
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context){
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.title),
+        title: Text("iGespKey"),
       ),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.display1,
-            ),
-          ],
-        ),
+        child: Text(
+          resultado,
+          style: new TextStyle(fontSize: 30.0, fontWeight: FontWeight.bold),),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: Icon(Icons.add),
-      ), 
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _scanQr, 
+        label: Text("Scan"),
+        icon: Icon(Icons.camera_roll),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 }
+
+
+
