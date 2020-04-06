@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:barcode_scan/barcode_scan.dart';
 import 'package:flutter/services.dart';
+import 'package:otp/otp.dart';
 
 void main() => runApp(MaterialApp(
       debugShowCheckedModeBanner: false,
@@ -13,12 +14,12 @@ class HomePage extends StatefulWidget{
 }
 
 class _HomePageState extends State<HomePage> {
-  String resultado = "Token: ";
+  String resultado = "Token";
   Future _scanQr() async{
     try {
       String qrLeitura = await BarcodeScanner.scan();
       setState(() {
-        resultado = qrLeitura;
+        resultado = OTP.generateTOTPCodeString(qrLeitura, new DateTime.now().millisecond);
       });
     } on PlatformException catch (e) {
       if (e.code == BarcodeScanner.CameraAccessDenied) {
@@ -30,7 +31,7 @@ class _HomePageState extends State<HomePage> {
       }
     } on FormatException {
       setState(() {
-        resultado = "Retorne para tela inicial para refazer a leitura";
+        resultado = "Scan para leitura!";
       });
     } catch (e) {
       setState(() {
