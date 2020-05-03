@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:barcode_scan/barcode_scan.dart';
 import 'package:flutter/services.dart';
+import 'package:igespkey/componentes/CircleTimer.dart';
 import 'package:otp/otp.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() => runApp(MaterialApp(
       debugShowCheckedModeBanner: false,
@@ -14,16 +18,65 @@ class HomePage extends StatefulWidget{
 }
 
 class _HomePageState extends State<HomePage> {
-  String resultado = "Token";
-  Future _scanQr() async{
+  String resultado = " - ";
+  Timer timer;
+  String key = "";
+  int timeCurrent = 0;
+  SharedPreferences prefs;
+  
+  @override
+  void initState(){
+    super.initState();
+    loadKey();
+    SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+    ]);
+  }
+
+  loadKey() async {
+    prefs =  await SharedPreferences.getInstance();
+    setState(() {
+      key = prefs.get('token');
+      if (key == null) {
+        key = "";
+      } else {
+        resultado = OTP.generateTOTPCodeString(key, new DateTime.now().millisecondsSinceEpoch);
+        _startTimer();
+      } 
+    });
+  }
+
+  Future _startTimer () async{
+    if (key != "") {
+        timeCurrent = 1;
+        timer = new Timer.periodic(
+        Duration(milliseconds: 1),
+        (Timer timer1) => setState( () {
+          timeCurrent++;
+          if (timeCurrent == 31000){
+            timeCurrent = 0;
+            resultado = OTP.generateTOTPCodeString(key, new DateTime.now().millisecondsSinceEpoch);
+          }
+        },),
+      );
+    }
+  }
+
+  Future _scanQr() async {
     try {
       String qrLeitura = await BarcodeScanner.scan();
+      prefs =  await SharedPreferences.getInstance();
       setState(() {
-        resultado = OTP.generateTOTPCodeString(qrLeitura, new DateTime.now().millisecond);
+        key = qrLeitura;
+        resultado = OTP.generateTOTPCodeString(key, new DateTime.now().millisecondsSinceEpoch);
+        prefs.setString('token', qrLeitura);
       });
+      _startTimer();
     } on PlatformException catch (e) {
       if (e.code == BarcodeScanner.CameraAccessDenied) {
-        resultado = "Sem permissão a camera";
+        setState(() {
+         resultado = "Sem permissão a camera";
+        });
       } else {
         setState(() {
           resultado = "Error: $e";
@@ -31,7 +84,7 @@ class _HomePageState extends State<HomePage> {
       }
     } on FormatException {
       setState(() {
-        resultado = "Scan para leitura!";
+        resultado = "QrCode inválido";
       });
     } catch (e) {
       setState(() {
@@ -42,18 +95,39 @@ class _HomePageState extends State<HomePage> {
 
   Widget build(BuildContext context){
     return Scaffold(
-      appBar: AppBar(
-        title: Text("iGespKey"),
+      appBar:AppBar(
+        title:Text(""),
+        backgroundColor: Colors.black12,
+        bottom: PreferredSize(
+          child: Image.asset(
+              'assets/logo_iToken.png', 
+              fit: BoxFit.cover,
+              height: 200,
+              width: 200
+            ), 
+          preferredSize: Size.fromHeight(150.0),
+        ),
       ),
       body: Center(
-        child: Text(
-          resultado,
-          style: new TextStyle(fontSize: 30.0, fontWeight: FontWeight.bold),),
+        child: CustomPaint(
+          foregroundPainter: CircleTimer(timeCurrent),
+            child:Container(
+              width: 200,
+              height: 200,
+              child: Center(
+                child:Text(
+                  resultado,
+                  style: new TextStyle(fontSize: 30.0, fontWeight: FontWeight.bold)
+                )
+              )
+            )
+        )
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _scanQr, 
         label: Text("Scan"),
-        icon: Icon(Icons.camera_roll),
+        icon: Icon(Icons.camera),
+        backgroundColor: Colors.black45,
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
